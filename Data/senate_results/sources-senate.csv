@@ -1,0 +1,35 @@
+State,Source,Is certified?,notes,missing votes?
+AK,https://www.elections.alaska.gov/results/20GENR/index.php,yes,,
+AL,https://www.sos.alabama.gov/sites/default/files/election-2020/Final%20Canvass%20of%20Results-Merged.pdf,yes,final canvas,
+AR,https://results.enr.clarityelections.com/AR/106124/web.264614/#/summary,unofficial,scytl site,TRUE
+AZ,https://azsos.gov/node/1251,official,,
+CO,https://www.sos.state.co.us/pubs/elections/resultsData.html,official,,TRUE
+DE,https://elections.delaware.gov/results/html/index.shtml?electionId=GE2020,official,write-in doc only has presidential,TRUE
+GA,https://results.enr.clarityelections.com/GA/105369/web.264614/#/summary,,went to runoff,TRUE
+ID,https://sos.idaho.gov/elections-division/2020-results-statewide/,official,,TRUE
+IL,https://www.elections.il.gov/ElectionOperations/DownloadVoteTotals.aspx?MID=vvc3ru6lLPI%3d&T=637438816257575621,official,missing scatter,TRUE
+IA,https://sos.iowa.gov/elections/results/index.html#19,official,,
+KS,https://sos.ks.gov/elections/elections-statistics.html,official,,TRUE
+KY,https://elect.ky.gov/results/2020-2029/Pages/2020.aspx,official,missing scatter,TRUE
+LA,https://voterportal.sos.la.gov/static/2020-11-03/resultsRace/Statewide,official,,TRUE
+ME,https://www.maine.gov/sos/cec/elec/results/results20.html#novtab,official,,
+MA,https://electionstats.state.ma.us/elections/view/140755/,official,only 1 official write-in,
+MI,https://mielections.us/election/results/2020GEN_CENR.html#,yes,missing scatter,TRUE
+MN,https://electionresults.sos.state.mn.us/20201103,,,
+MS,https://www.sos.ms.gov/Elections-Voting/Pages/2020-General-Election.aspx,yes,no write in,TRUE
+MT,https://sosmt.gov/elections/results/,yes,no write in,TRUE
+NE,https://sos.nebraska.gov/elections/2020-elections,yes,,
+NH,https://sos.nh.gov/elections/elections/election-results/2020/general-election/,yes,no write in breakdown,
+NJ,https://nj.gov/state/elections/election-information-2020.shtml#general,yes,no write-in,TRUE
+NM,https://electionresults.sos.state.nm.us/resultsSW.aspx?type=FED&map=CTY,yes,no write-in,TRUE
+NC,https://er.ncsbe.gov/?election_dt=11/03/2020&county_id=0&office=FED&contest=1374,yes,no write-in or scatter,TRUE
+OK,https://results.okelections.us/OKER/?elecDate=20201103,yes,no write-in or scatter,TRUE
+OR,https://sos.oregon.gov/elections/Pages/electionhistory.aspx,yes,,
+RI,https://www.ri.gov/election/results/2020/general_election/,yes,,
+SC,https://www.enr-scvotes.org/SC/106502/Web02-state.264691/#/?undefined,yes,,
+SD,http://electionresults.sd.gov/,unofficial,no write-in or scatter,TRUE
+TN,https://sos.tn.gov/elections/results,Does not say,no scatter,TRUE
+TX,https://results.texas-election.com/races,official,no write-in or scatter,TRUE
+VA,https://results.elections.virginia.gov/vaelections/2020%20November%20General/Site/Presidential.html,official,,
+WV,https://results.enr.clarityelections.com/WV/106210/web.264614/#/detail/100,official,no write-in or scatter,TRUE
+WY,https://sos.wyo.gov/Elections/Docs/2020/2020GeneralResults.aspx,official,,
