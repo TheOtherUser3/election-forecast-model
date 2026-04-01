@@ -236,7 +236,7 @@ for col in ["TTL_RECEIPTS", "TTL_INDIV_CONTRIB", "OTHER_POL_CMTE_CONTRIB", "POL_
 print("\nYear distribution:")
 print(merged["year"].value_counts().sort_index())
 
-print("\nWin rate by party (should be close to 50/50):")
+print("\nWin rate by party:")
 print(merged.groupby("party")["won"].mean())
 
 print("\nIncumbency distribution:")
@@ -248,6 +248,32 @@ print(merged["is_midterm"].value_counts())
 print("\nSample rows:")
 print(merged[["year", "state", "office", "district", "party",
               "incumbency", "TTL_RECEIPTS", "vote_share", "won", "is_midterm"]].head(10))
+
+
+# CURRENT FINAL DATASET AFTER PROCESSING: merged (pandas DataFrame variable type for easy joins)
+# Each row is one candidate in one race. Only Democrat and Republican general
+# election candidates are included. Both midterm and presidential year elections
+# are included from 1976-2024 (house) and 1976-2022 (senate).
+#
+# Columns:
+#   year            - election year (int)
+#   state           - two-letter state abbreviation "AL" "NY"
+#   office          - "H" for House, "S" for Senate
+#   district        - zero-padded district number string. "11" for District 11
+#   party           - "DEM" or "REP"
+#   candidate_mit   - candidate name as it appears in MIT election results
+#   vote_share      - fraction of total votes received (float, 0-1). None for 2022 senate rows since we only need to know win vs loss for test set
+#   totalvotes      - total votes cast in the race. None for 2022 senate rows.
+#   won             - 1 if this candidate won the general election, 0 if they lost
+#   is_midterm      - 1 if midterm year, 0 if presidential year
+#   name_normalized - cleaned/normalized version of candidate_mit used for FEC joining
+#   incumbency      - "incumbent", "challenger", "open", or "unknown" if FEC had no match
+#   TTL_RECEIPTS    - total money raised by candidate (float). 0 if FEC had no match.
+#   TTL_INDIV_CONTRIB     - total individual contributions (float)
+#   OTHER_POL_CMTE_CONTRIB - contributions from other political committees (float)
+#   POL_PTY_CONTRIB - contributions from party committees (float) (probably will just want to sum all of these up at end?)
+#   candidate_fec   - candidate name as it appears in FEC data. None if no FEC match.
+#   vote_pct_fec    - general election vote percentage from FEC (only available pre-2012)  Completely unecessary, just an artifict we can remove at the end
 
 
 # SAVE 
