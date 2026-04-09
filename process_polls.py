@@ -1,12 +1,4 @@
 import pandas as pd
-
-polls_url = "https://raw.githubusercontent.com/fivethirtyeight/data/master/pollster-ratings/raw_polls.csv"
-polls = pd.read_csv(polls_url, encoding="utf-8", low_memory=False)
-
-print("Columns in polls CSV:")
-print(polls.columns.tolist())
-
-import pandas as pd
 import re
 
 polls_url = "https://raw.githubusercontent.com/fivethirtyeight/data/master/pollster-ratings/raw_polls.csv"
@@ -82,39 +74,55 @@ final_df['poll_avg'] = final_df['poll_avg'].fillna(0)
 # Create a Boolean for poll availability
 final_df['poll_available'] = final_df['poll_avg'] > 0
 
-# Partisanship -- I think this works?
-# Compute partisanship for House
-# Margin = DEM - REP per year/state/district
-house_margin = mit_results[mit_results['office'] == 'H'].pivot_table(
-    index=['year', 'state', 'district'],
-    columns='party',
-    values='vote_share'
+# Partisanship
+pres = pd.read_csv("/content/1976-2020-president.csv")
+pres = pres[pres["party_simplified"].isin(["DEMOCRAT", "REPUBLICAN"])]
+pres["vote_share"] = pres["candidatevotes"] / pres["totalvotes"]
+
+# State-level results
+state_results = pres.pivot_table(
+    index=["year", "state_po"],
+    columns="party_simplified",
+    values="vote_share"
 ).reset_index()
+state_results["dem_margin"] = (
+    state_results["DEMOCRAT"].fillna(0) - state_results["REPUBLICAN"].fillna(0)
+)
+# National popular vote
+national = pres.groupby(["year", "party_simplified"])["candidatevotes"].sum().unstack()
 
-house_margin['partisan'] = (house_margin['DEM'].fillna(0) - house_margin['REP'].fillna(0))
+national["dem_share"] = national["DEMOCRAT"] / (
+    national["DEMOCRAT"] + national["REPUBLICAN"]
+)
 
-# Compute partisanship for Senate
-# Margin = DEM - REP per year/state
-senate_margin = mit_results[mit_results['office'] == 'S'].pivot_table(
-    index=['year', 'state'],
-    columns='party',
-    values='vote_share'
-).reset_index()
+national["rep_share"] = 1 - national["dem_share"]
 
-senate_margin['district'] = '00'
-senate_margin['partisan'] = (senate_margin['DEM'].fillna(0) - senate_margin['REP'].fillna(0))
+national["national_margin"] = national["dem_share"] - national["rep_share"]
 
-# Combine House and Senate margins
-partisan_margin = pd.concat([house_margin[['year', 'state', 'district', 'partisan']],
-                             senate_margin[['year', 'state', 'district', 'partisan']]], 
-                            ignore_index=True)
+national = national.reset_index()[["year", "national_margin"]]
+
+# combine
+pvi = pd.merge(state_results, national, on="year")
+
+pvi["partisan"] = pvi["dem_margin"] - pvi["national_margin"]
+
+pvi_midterm = pvi.copy()
+pvi_midterm["year"] = pvi_midterm["year"] + 2
+
+pvi_full = pd.concat([pvi, pvi_midterm], ignore_index=True)
+
+pvi_full = pvi_full[["year", "state_po", "partisan"]]
 
 # Merge into final dataframe
 final_df = final_df.merge(
-    partisan_margin,
-    on=['year', 'state', 'district'],
-    how='left'
+    pvi_full,
+    left_on=["year", "state"],
+    right_on=["year", "state_po"],
+    how="left"
 )
+
+# Clean up column name
+final_df = final_df.drop(columns=["state_po"])
 
 print(f"Polls matched: {final_df['poll_available'].sum()}/{len(final_df)}")
 print(final_df[['year', 'state', 'office', 'district', 'party', 'candidate_mit', 'poll_avg', 'poll_available']].head())
@@ -122,4 +130,4 @@ print(final_df[['year', 'state', 'office', 'district', 'party', 'candidate_mit',
 final_df.to_csv("elections_clean_with_polls.csv", index=False)
 print(f"Saved final dataset with polls: {len(final_df)} rows")
 
-final_df.head()
+final_df
