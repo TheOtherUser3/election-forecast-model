@@ -1,0 +1,53 @@
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, brier_score_loss
+
+features = [
+    'poll_avg',
+    'TTL_RECEIPTS',
+    'TTL_INDIV_CONTRIB',
+    'OTHER_POL_CMTE_CONTRIB',
+    'POL_PTY_CONTRIB',
+    'partisan',
+    'is_midterm'
+]
+final_df['incumbent_flag'] = (final_df['incumbency'] == 'incumbent').astype(int)
+features.append('incumbent_flag')
+
+# Train/test split
+train = final_df[final_df['year'] > 2022]
+test = final_df[final_df['year'] <= 2022]
+
+X_train = train[features].fillna(0)
+y_train = train['won']
+X_test = test[features].fillna(0)
+y_test = test['won']
+
+# Train logistic regression
+model = LogisticRegression(max_iter=1000)
+model.fit(X_train, y_train)
+
+# probability of winning
+y_prob = model.predict_proba(X_test)[:, 1]
+
+# binary prediction
+y_pred = (probs > 0.5).astype(int)
+
+#accuracy
+accuracy = accuracy_score(y_test, y_pred)
+print("Accuracy:", accuracy)
+
+# precision
+precision = precision_score(y_test, y_pred)
+print("Precision:", precision)
+
+# recall
+recall = recall_score(y_test, y_pred)
+print("Recall:", recall)
+
+# f1 score
+f1 = f1_score(y_test, y_pred)
+print("F1 Score:", f1)
+
+# brier
+brier = brier_score_loss(y_test, y_prob)
+print("Brier Score:", brier)
