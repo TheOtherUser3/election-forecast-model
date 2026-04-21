@@ -14,8 +14,8 @@ final_df['incumbent_flag'] = (final_df['incumbency'] == 'incumbent').astype(int)
 features.append('incumbent_flag')
 
 # Train/test split
-train = final_df[final_df['year'] > 2022]
-test = final_df[final_df['year'] <= 2022]
+train = final_df[final_df['year'] < 2022]
+test = final_df[final_df['year'] == 2022]
 
 X_train = train[features].fillna(0)
 y_train = train['won']

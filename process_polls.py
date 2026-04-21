@@ -7,6 +7,9 @@ polls = pd.read_csv(polls_url, encoding="utf-8", low_memory=False)
 # Keep only DEM and REP candidates
 polls = polls[polls['cand1_party'].isin(['DEM', 'REP'])]
 
+# Get previous data from elections_clean.csv
+merged = pd.read_csv("elections_clean.csv")
+
 # Normalize candidate names
 def normalize_name(name):
     if pd.isna(name):

@@ -195,7 +195,7 @@ def get_best_fec_match(row):
         return pd.Series({
             "incumbency": None, "TTL_RECEIPTS": 0, "TTL_INDIV_CONTRIB": 0,
             "OTHER_POL_CMTE_CONTRIB": 0, "POL_PTY_CONTRIB": 0,
-            "candidate_fec": None, "vote_pct_fec": None, "CAND_ID": None
+            "candidate_fec": None, "vote_pct_fec": None
         })
     result = process.extractOne(
         row["name_normalized"],
@@ -236,7 +236,7 @@ for col in ["TTL_RECEIPTS", "TTL_INDIV_CONTRIB", "OTHER_POL_CMTE_CONTRIB", "POL_
 print("\nYear distribution:")
 print(merged["year"].value_counts().sort_index())
 
-print("\nWin rate by party:")
+print("\nWin rate by party (should be close to 50/50):")
 print(merged.groupby("party")["won"].mean())
 
 print("\nIncumbency distribution:")
@@ -250,32 +250,6 @@ print(merged[["year", "state", "office", "district", "party",
               "incumbency", "TTL_RECEIPTS", "vote_share", "won", "is_midterm"]].head(10))
 
 
-# CURRENT FINAL DATASET AFTER PROCESSING: merged (pandas DataFrame variable type for easy joins)
-# Each row is one candidate in one race. Only Democrat and Republican general
-# election candidates are included. Both midterm and presidential year elections
-# are included from 1976-2024 (house) and 1976-2022 (senate).
-#
-# Columns:
-#   year            - election year (int)
-#   state           - two-letter state abbreviation "AL" "NY"
-#   office          - "H" for House, "S" for Senate
-#   district        - zero-padded district number string. "11" for District 11
-#   party           - "DEM" or "REP"
-#   candidate_mit   - candidate name as it appears in MIT election results
-#   vote_share      - fraction of total votes received (float, 0-1). None for 2022 senate rows since we only need to know win vs loss for test set
-#   totalvotes      - total votes cast in the race. None for 2022 senate rows.
-#   won             - 1 if this candidate won the general election, 0 if they lost
-#   is_midterm      - 1 if midterm year, 0 if presidential year
-#   name_normalized - cleaned/normalized version of candidate_mit used for FEC joining
-#   incumbency      - "incumbent", "challenger", "open", or "unknown" if FEC had no match
-#   TTL_RECEIPTS    - total money raised by candidate (float). 0 if FEC had no match.
-#   TTL_INDIV_CONTRIB     - total individual contributions (float)
-#   OTHER_POL_CMTE_CONTRIB - contributions from other political committees (float)
-#   POL_PTY_CONTRIB - contributions from party committees (float) (probably will just want to sum all of these up at end?)
-#   candidate_fec   - candidate name as it appears in FEC data. None if no FEC match.
-#   vote_pct_fec    - general election vote percentage from FEC (only available pre-2012)  Completely unecessary, just an artifict we can remove at the end
-
-
 # SAVE 
 
 merged.to_csv("elections_clean.csv", index=False)
@@ -283,3 +257,135 @@ print(f"\nSaved to elections_clean.csv ({len(merged)} rows)")
 
 unmatched = merged[merged["incumbency"] == "unknown"]
 print(unmatched[unmatched["year"] == 2022][["year", "state", "office", "district", "party", "candidate_mit"]].head(20))
+
+
+polls_url = "https://raw.githubusercontent.com/fivethirtyeight/data/master/pollster-ratings/raw_polls.csv"
+polls = pd.read_csv(polls_url, encoding="utf-8", low_memory=False)
+
+# Keep only DEM and REP candidates
+polls = polls[polls['cand1_party'].isin(['DEM', 'REP'])]
+
+# Normalize candidate names
+def normalize_name(name):
+    if pd.isna(name):
+        return ""
+    name = str(name).upper().strip()
+    # Flip LAST, FIRST to FIRST LAST
+    if "," in name:
+        parts = name.split(",", 1)
+        name = parts[1].strip() + " " + parts[0].strip()
+    # Remove punctuation and extra spaces
+    name = re.sub(r"[^\w\s]", "", name)
+    name = re.sub(r"\s+", " ", name)
+    return name
+
+polls['candidate_normalized'] = polls['cand1_name'].apply(normalize_name)
+
+# Convert polldate/electiondate to datetime
+polls['start_date'] = pd.to_datetime(polls['polldate'], errors='coerce')
+polls['end_date'] = pd.to_datetime(polls['electiondate'], errors='coerce')
+
+polls = polls[polls['cand1_party'].isin(['DEM','REP'])]
+
+# Get latest poll per race + candidate
+latest_poll = (
+    polls.sort_values(['race', 'end_date'])
+    .groupby(['race', 'candidate_normalized'])
+    .tail(1)
+    .rename(columns={'cand1_pct': 'poll_avg', 'cand1_party':'party'})  # <-- fix here
+)
+
+# Parse race string into year, state, office, district
+def parse_race(race_str):
+    parts = race_str.split("_")
+    year = int(parts[0])
+    office = 'S' if 'Sen' in parts[1] else 'H'
+    if office == 'H':
+        state_district = parts[2]
+        if "-" in state_district:
+            state, district = state_district.split("-")
+        else:
+            state = state_district
+            district = "00"
+        district = district.zfill(2)
+    else:
+        state = parts[2]
+        district = "00"
+    return pd.Series([year, state, office, district])
+
+latest_poll[['year', 'state', 'office', 'district']] = latest_poll['race'].apply(parse_race)
+latest_poll["name_normalized"] = latest_poll["candidate_normalized"]
+
+# Normalize partner dataset candidate names
+merged["name_normalized"] = merged["candidate_mit"].apply(normalize_name)
+
+# Merge polls
+final_df = pd.merge(
+    merged,
+    latest_poll[['year', 'state', 'office', 'district', 'party', 'name_normalized', 'poll_avg']],
+    how='left',  # Keep all rows from merged
+    on=['year', 'state', 'office', 'district', 'party', 'name_normalized']
+)
+
+# Fill missing poll averages with 0
+final_df['poll_avg'] = final_df['poll_avg'].fillna(0)
+# Create a Boolean for poll availability
+final_df['poll_available'] = final_df['poll_avg'] > 0
+
+# Partisanship
+pres = pd.read_csv("Data/1976-2020-president.csv")
+pres = pres[pres["party_simplified"].isin(["DEMOCRAT", "REPUBLICAN"])]
+pres["vote_share"] = pres["candidatevotes"] / pres["totalvotes"]
+
+# State-level results
+state_results = pres.pivot_table(
+    index=["year", "state_po"],
+    columns="party_simplified",
+    values="vote_share"
+).reset_index()
+state_results["dem_margin"] = (
+    state_results["DEMOCRAT"].fillna(0) - state_results["REPUBLICAN"].fillna(0)
+)
+# National popular vote
+national = pres.groupby(["year", "party_simplified"])["candidatevotes"].sum().unstack()
+
+national["dem_share"] = national["DEMOCRAT"] / (
+    national["DEMOCRAT"] + national["REPUBLICAN"]
+)
+
+national["rep_share"] = 1 - national["dem_share"]
+
+national["national_margin"] = national["dem_share"] - national["rep_share"]
+
+national = national.reset_index()[["year", "national_margin"]]
+
+# combine
+pvi = pd.merge(state_results, national, on="year")
+
+pvi["partisan"] = pvi["dem_margin"] - pvi["national_margin"]
+
+pvi_midterm = pvi.copy()
+pvi_midterm["year"] = pvi_midterm["year"] + 2
+
+pvi_full = pd.concat([pvi, pvi_midterm], ignore_index=True)
+
+pvi_full = pvi_full[["year", "state_po", "partisan"]]
+
+# Merge into final dataframe
+final_df = final_df.merge(
+    pvi_full,
+    left_on=["year", "state"],
+    right_on=["year", "state_po"],
+    how="left"
+)
+
+# Clean up column name
+final_df = final_df.drop(columns=["state_po"])
+
+print(f"Polls matched: {final_df['poll_available'].sum()}/{len(final_df)}")
+print(final_df[['year', 'state', 'office', 'district', 'party', 'candidate_mit', 'poll_avg', 'poll_available']].head())
+
+final_df.to_csv("elections_clean_with_polls.csv", index=False)
+print(f"Saved final dataset with polls: {len(final_df)} rows")
+
+final_df
