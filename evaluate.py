@@ -156,6 +156,56 @@ def evaluate_gbm():
   
     filtered = filter_to_test_set(pred_df)
     return compute_metrics(filtered['y_true'],filtered['y_prob'])
+
+FEATURE_SETS = {
+    "poll_only": ['poll_avg'],
+    "poll_plus_basic": [
+        'poll_avg',
+        'incumbent_flag',
+        'partisan',
+        'is_midterm'],
+    "all_features": [
+        'poll_avg',
+        'incumbent_flag',
+        'partisan',
+        'is_midterm',
+        'TTL_RECEIPTS',
+        'TTL_INDIV_CONTRIB',
+        'OTHER_POL_CMTE_CONTRIB',
+        'POL_PTY_CONTRIB']
+}
+
+def evaluate_logreg_t1(feature_set):
+    df = final_df.copy()
+    df['incumbent_flag'] = (df['incumbency'] == 'incumbent').astype(int)
+
+    features = FEATURE_SETS[feature_set]
+
+    train = df[df['year'] < 2022]
+    test = df[df['year'] == 2022]
+
+    model = LogisticRegression(max_iter = 1000)
+    model.fit(train[features].fillna(0), train['won'])
+
+    y_prob = model.predict_proba(test[features].fillna(0))[:, 1]
+
+    return compute_metrics(test['won'], y_prob)
+
+def evaluate_gbm_t1(feature_set):
+    df = final_df.copy()
+    df['incumbent_flag'] = (df['incumbency'] == 'incumbent').astype(int)
+
+    features = FEATURE_SETS[feature_set]
+
+    train = df[df['year'] < 2022]
+    test = df[df['year'] == 2022]
+
+    model = GradientBoostingClassifier()
+    model.fit(train[features].fillna(0), train['won'])
+
+    y_prob = model.predict_proba(test[features].fillna(0))[:, 1]
+
+    return compute_metrics(test['won'], y_prob)
     
 # Used Claude to format the printing again here and below
 def pretty_print(name, result):
@@ -179,6 +229,15 @@ if __name__ == "__main__":
     pretty_print("Logistic regression", evaluate_logreg())
     pretty_print("Gradient boosted trees", evaluate_gbm())
 
+    print()
+    print("=" * 75)
+    print("Experiment 1: Feature Set Variation")
+    print("=" * 75)
+
+    for name in FEATURE_SETS:
+        print()
+        pretty_print(f"LogReg ({name})", evaluate_logreg_t1(name))
+        pretty_print(f"GBM ({name})", evaluate_gbm_t1(name))
 
 """ FILE DESCRIPTION
 Create an evaluation script to train and evaluate the models for our two tests in an easy to read, consistent way.
