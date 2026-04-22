@@ -102,26 +102,26 @@ def evaluate_logreg():
         'partisan',
         'is_midterm',
         'incumbent_flag'
-      ]
+    ]
 
-      # Train/test split
-      train = df[df['year'] < 2022]
-      test = df[df['year'] == 2022]
+    # Train/test split
+    train = df[df['year'] < 2022]
+    test = df[df['year'] == 2022]
 
-      # Train logistic regression
-      logreg = LogisticRegression(max_iter=1000)
-      logreg.fit(train[features].fillna(0), train['won'])
+    # Train logistic regression
+    logreg = LogisticRegression(max_iter=1000)
+    logreg.fit(train[features].fillna(0), train['won'])
 
-      y_prob_logreg = logreg.predict_proba(test[features].fillna(0))[:, 1]
+    y_prob_logreg = logreg.predict_proba(test[features].fillna(0))[:, 1]
 
-      pred_df = test[[
-          'year','state','office','district','party','candidate_mit','won','incumbency','poll_avg']].copy()
-      pred_df = pred_df.rename(columns={'candidate_mit': 'candidate'})
-      pred_df['y_true'] = pred_df['won']
-      pred_df['y_prob'] = y_prob_logreg
+    pred_df = test[[
+        'year','state','office','district','party','candidate_mit','won','incumbency','poll_avg']].copy()
+    pred_df = pred_df.rename(columns={'candidate_mit': 'candidate'})
+    pred_df['y_true'] = pred_df['won']
+    pred_df['y_prob'] = y_prob_logreg
   
-      filtered = filter_to_test_set(pred_df)
-      return compute_metrics(filtered['y_true'],filtered['y_prob'])
+    filtered = filter_to_test_set(pred_df)
+    return compute_metrics(filtered['y_true'],filtered['y_prob'])
 
 def evaluate_gbm():
     df = final_df.copy()
