@@ -235,8 +235,8 @@ if __name__ == "__main__":
 
     for name in FEATURE_SETS:
         print()
-        pretty_print(f"LogReg ({name})", evaluate_logreg_t1(name))
-        pretty_print(f"GBM ({name})", evaluate_gbm_t1(name))
+        pretty_print(f"LogReg ({name})", experiment1_logreg(name))
+        pretty_print(f"GBM ({name})", experiment1_gbm(name))
 
 """ FILE DESCRIPTION
 Create an evaluation script to train and evaluate the models for our two tests in an easy to read, consistent way.
