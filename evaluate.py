@@ -109,16 +109,16 @@ def evaluate_logreg():
     test = df[df['year'] == 2022]
 
     # Train logistic regression
-    logreg = LogisticRegression(max_iter=1000)
-    logreg.fit(train[features].fillna(0), train['won'])
+    model_lr = LogisticRegression(max_iter=1000)
+    model_lr.fit(train[features].fillna(0), train['won'])
 
-    y_prob_logreg = logreg.predict_proba(test[features].fillna(0))[:, 1]
+    y_prob_lr = model_lr.predict_proba(test[features].fillna(0))[:, 1]
 
     pred_df = test[[
         'year','state','office','district','party','candidate_mit','won','incumbency','poll_avg']].copy()
     pred_df = pred_df.rename(columns={'candidate_mit': 'candidate'})
     pred_df['y_true'] = pred_df['won']
-    pred_df['y_prob'] = y_prob_logreg
+    pred_df['y_prob'] = y_prob_lr
   
     filtered = filter_to_test_set(pred_df)
     return compute_metrics(filtered['y_true'],filtered['y_prob'])
@@ -143,16 +143,16 @@ def evaluate_gbm():
     test = df[df['year'] == 2022]
 
     #train gradient boosting
-    gbm = GradientBoostingClassifier()
-    gbm.fit(train[features].fillna(0), train['won'])
+    model_gb = GradientBoostingClassifier()
+    model_gb.fit(train[features].fillna(0), train['won'])
   
-    y_prob_gbm = gbm.predict_proba(test[features].fillna(0))[:, 1]
+    y_prob_gb = model_gb.predict_proba(test[features].fillna(0))[:, 1]
   
     pred_df = test[[
         'year','state','office','district','party','candidate_mit','won','incumbency','poll_avg']].copy()
     pred_df = pred_df.rename(columns={'candidate_mit': 'candidate'})
     pred_df['y_true'] = pred_df['won']
-    pred_df['y_prob'] = y_prob_gbm
+    pred_df['y_prob'] = y_prob_gb
   
     filtered = filter_to_test_set(pred_df)
     return compute_metrics(filtered['y_true'],filtered['y_prob'])
@@ -175,7 +175,7 @@ FEATURE_SETS = {
         'POL_PTY_CONTRIB']
 }
 
-def evaluate_logreg_t1(feature_set):
+def evaluate_model_on_features(model_type, feature_set):
     df = final_df.copy()
     df['incumbent_flag'] = (df['incumbency'] == 'incumbent').astype(int)
 
@@ -184,28 +184,28 @@ def evaluate_logreg_t1(feature_set):
     train = df[df['year'] < 2022]
     test = df[df['year'] == 2022]
 
-    model = LogisticRegression(max_iter = 1000)
+    model = model_type()
     model.fit(train[features].fillna(0), train['won'])
 
     y_prob = model.predict_proba(test[features].fillna(0))[:, 1]
 
-    return compute_metrics(test['won'], y_prob)
+    pred_df = test[[
+        'year','state','office','district','party','candidate_mit','won','incumbency'
+    ]].copy()
 
-def evaluate_gbm_t1(feature_set):
-    df = final_df.copy()
-    df['incumbent_flag'] = (df['incumbency'] == 'incumbent').astype(int)
+    pred_df = pred_df.rename(columns={'candidate_mit': 'candidate'})
+    pred_df['y_true'] = pred_df['won']
+    pred_df['y_prob'] = y_prob
 
-    features = FEATURE_SETS[feature_set]
+    filtered = filter_to_test_set(pred_df)
 
-    train = df[df['year'] < 2022]
-    test = df[df['year'] == 2022]
+    return compute_metrics(filtered['y_true'], filtered['y_prob'])
 
-    model = GradientBoostingClassifier()
-    model.fit(train[features].fillna(0), train['won'])
+def experiment1_logreg(feature_set):
+    return evaluate_model_on_features(LogisticRegression, feature_set)
 
-    y_prob = model.predict_proba(test[features].fillna(0))[:, 1]
-
-    return compute_metrics(test['won'], y_prob)
+def experiment1_gbm(feature_set):
+    return evaluate_model_on_features(GradientBoostingClassifier, feature_set)
     
 # Used Claude to format the printing again here and below
 def pretty_print(name, result):
@@ -214,7 +214,6 @@ def pretty_print(name, result):
     else:
         print(f"  {name:<45} acc = {result['accuracy']:.3f}   "
               f"brier = {result['brier']:.4f}")
-
 
 if __name__ == "__main__":
     n_test = len(load_test_candidates())
