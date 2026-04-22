@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score, brier_score_loss
 import lstm_model
-
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import GradientBoostingClassifier
 
 DATA_FILE = "lstm_data.npz"
 TEST_CANDIDATES_FILE = "test_candidates.csv"
@@ -89,29 +90,73 @@ def evaluate_lstm(hidden_size=128, seq_len_weeks=12):
 
 
 def evaluate_logreg():
-    """Placeholder for your logistic regression.
+    df = final_df.copy()
+    df['incumbent_flag'] = (df['incumbency'] == 'incumbent').astype(int)
+  
+    features = [
+        'poll_avg',
+        'TTL_RECEIPTS',
+        'TTL_INDIV_CONTRIB',
+        'OTHER_POL_CMTE_CONTRIB',
+        'POL_PTY_CONTRIB',
+        'partisan',
+        'is_midterm',
+        'incumbent_flag'
+      ]
 
-    When ready, the function should:
-      Call the function to train the logreg
-      Then produce a prediction dataframe for 2022 with columns:
-         year, state, office, district, party, candidate, y_true, y_prob (if possible, this just makes it easier to reuse the filter_to_test_set function)
-      Then call filter_to_test_set() to restrict to LSTM's test candidates (For the Test 2 set, you'll likely need to set up a seperate function
-        + for loop of some kind for the test 1, let me know if you need any help on anything!).
-      Finally, return compute_metrics(filtered['y_true'], filtered['y_prob'])!
+      # Train/test split
+      train = df[df['year'] < 2022]
+      test = df[df['year'] == 2022]
 
-    Let me know if you have any questions!  I hope this helps!
-    """
-    return None
+      # Train logistic regression
+      logreg = LogisticRegression(max_iter=1000)
+      logreg.fit(train[features].fillna(0), train['won'])
 
+      y_prob_logreg = logreg.predict_proba(test[features].fillna(0))[:, 1]
+
+      pred_df = test[[
+          'year','state','office','district','party','candidate_mit','won','incumbency','poll_avg']].copy()
+      pred_df = pred_df.rename(columns={'candidate_mit': 'candidate'})
+      pred_df['y_true'] = pred_df['won']
+      pred_df['y_prob'] = y_prob_logreg
+  
+      filtered = filter_to_test_set(pred_df)
+      return compute_metrics(filtered['y_true'],filtered['y_prob'])
 
 def evaluate_gbm():
-    """
-    Placeholder for your gradient boosted tree.
-    Same deal as evaluate_logreg above.
-    """
-    return None
+    df = final_df.copy()
+    df['incumbent_flag'] = (df['incumbency'] == 'incumbent').astype(int)
 
+    features = [
+      'poll_avg',
+      'TTL_RECEIPTS',
+      'TTL_INDIV_CONTRIB',
+      'OTHER_POL_CMTE_CONTRIB',
+      'POL_PTY_CONTRIB',
+      'partisan',
+      'is_midterm',
+      'incumbent_flag'
+    ]
+  
+    #train test split
+    train = df[df['year'] < 2022]
+    test = df[df['year'] == 2022]
 
+    #train gradient boosting
+    gbm = GradientBoostingClassifier()
+    gbm.fit(train[features].fillna(0), train['won'])
+  
+    y_prob_gbm = gbm.predict_proba(test[features].fillna(0))[:, 1]
+  
+    pred_df = test[[
+        'year','state','office','district','party','candidate_mit','won','incumbency','poll_avg']].copy()
+    pred_df = pred_df.rename(columns={'candidate_mit': 'candidate'})
+    pred_df['y_true'] = pred_df['won']
+    pred_df['y_prob'] = y_prob_gbm
+  
+    filtered = filter_to_test_set(pred_df)
+    return compute_metrics(filtered['y_true'],filtered['y_prob'])
+    
 # Used Claude to format the printing again here and below
 def pretty_print(name, result):
     if result is None:
