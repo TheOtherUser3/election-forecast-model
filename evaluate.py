@@ -7,8 +7,17 @@ from sklearn.ensemble import GradientBoostingClassifier
 
 DATA_FILE = "lstm_data.npz"
 TEST_CANDIDATES_FILE = "test_candidates.csv"
+ELECTIONS_CSV = "elections_clean_with_polls.csv"
 TEST_YEAR = 2022
 
+final_df = pd.read_csv(ELECTIONS_CSV)
+ 
+# Force column types to match the poll side of the join to fix a no match issue due to CSV reading being different than what was written
+final_df["year"] = final_df["year"].astype(int)
+final_df["district"] = final_df["district"].astype(str).str.zfill(2)
+final_df["state"] = final_df["state"].astype(str)
+final_df["office"] = final_df["office"].astype(str)
+final_df["party"] = final_df["party"].astype(str)
 
 def compute_metrics(y_true, y_prob):
     y_pred = (y_prob > 0.5).astype(int)
@@ -80,7 +89,7 @@ def naive_poll_baseline():
     return compute_metrics(y[test_mask], probs[test_mask])
 
 
-def evaluate_lstm(hidden_size=128, seq_len_weeks=12):
+def evaluate_lstm(hidden_size=256, seq_len_weeks=12):
     """LSTM is scored on the same test set by construction."""
     results = lstm_model.train_and_eval(
         hidden_size=hidden_size,
@@ -224,7 +233,7 @@ if __name__ == "__main__":
     print()
 
     pretty_print("Naive poll baseline (poll leader wins)", naive_poll_baseline())
-    pretty_print("LSTM (hidden=128, seq=12 weeks)", evaluate_lstm())
+    pretty_print("LSTM (hidden=256, seq=12 weeks)", evaluate_lstm())
     pretty_print("Logistic regression", evaluate_logreg())
     pretty_print("Gradient boosted trees", evaluate_gbm())
 

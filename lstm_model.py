@@ -210,7 +210,7 @@ def run_all_sweeps():
     seqlen_results = []
     for weeks in (4, 8, 12):
         print(f"\n--- seq_len = {weeks} weeks ({weeks*7} days) ---")
-        r = train_and_eval(hidden_size=128, seq_len_weeks=weeks, verbose=True)
+        r = train_and_eval(hidden_size=256, seq_len_weeks=weeks, verbose=True)
         print(r)
         seqlen_results.append(r)
 

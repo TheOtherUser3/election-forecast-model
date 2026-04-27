@@ -4,12 +4,6 @@ import re
 polls_url = "https://raw.githubusercontent.com/fivethirtyeight/data/master/pollster-ratings/raw_polls.csv"
 polls = pd.read_csv(polls_url, encoding="utf-8", low_memory=False)
 
-# Keep only DEM and REP candidates
-polls = polls[polls['cand1_party'].isin(['DEM', 'REP'])]
-
-# Get previous data from elections_clean.csv
-merged = pd.read_csv("elections_clean.csv")
-
 # Normalize candidate names
 def normalize_name(name):
     if pd.isna(name):
@@ -24,20 +18,33 @@ def normalize_name(name):
     name = re.sub(r"\s+", " ", name)
     return name
 
-polls['candidate_normalized'] = polls['cand1_name'].apply(normalize_name)
 
-# Convert polldate/electiondate to datetime
+# Expand cand1 and cand2 into one row per (poll, candidate)
+cand1 = polls[['race', 'polldate', 'electiondate',
+               'cand1_name', 'cand1_party', 'cand1_pct']].rename(columns={
+    'cand1_name': 'candidate_name',
+    'cand1_party': 'party',
+    'cand1_pct': 'poll_pct',
+})
+cand2 = polls[['race', 'polldate', 'electiondate',
+               'cand2_name', 'cand2_party', 'cand2_pct']].rename(columns={
+    'cand2_name': 'candidate_name',
+    'cand2_party': 'party',
+    'cand2_pct': 'poll_pct',
+})
+polls = pd.concat([cand1, cand2], ignore_index=True)
+
+polls = polls[polls['party'].isin(['DEM', 'REP'])].copy()
+polls = polls.dropna(subset=['poll_pct', 'candidate_name'])
+polls['candidate_normalized'] = polls['candidate_name'].apply(normalize_name)
 polls['start_date'] = pd.to_datetime(polls['polldate'], errors='coerce')
 polls['end_date'] = pd.to_datetime(polls['electiondate'], errors='coerce')
 
-polls = polls[polls['cand1_party'].isin(['DEM','REP'])]
-
-# Get latest poll per race + candidate
 latest_poll = (
     polls.sort_values(['race', 'end_date'])
     .groupby(['race', 'candidate_normalized'])
     .tail(1)
-    .rename(columns={'cand1_pct': 'poll_avg', 'cand1_party':'party'})  # <-- fix here
+    .rename(columns={'poll_pct': 'poll_avg'})
 )
 
 # Parse race string into year, state, office, district
